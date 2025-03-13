@@ -1,45 +1,56 @@
 import pygame
 
-def handle_button_press(button):
-    print(f"Button {button} pressed")
+class PS5Controller:
+    def __init__(self):
+        pygame.init()
+        pygame.joystick.init()
 
-def handle_button_release(button):
-    print(f"Button {button} released")
+        if pygame.joystick.get_count() == 0:
+            print("No joystick detected.")
+            self.joystick = None
+            return
 
-def handle_axis_motion(axis, value):
-    pass
-    # print(f"Axis {axis} moved to {value}")
+        self.joystick = pygame.joystick.Joystick(0)
+        self.joystick.init()
+        print(f"Detected Joystick: {self.joystick.get_name()}")
 
-def handle_hat_motion(hat, value):
-    print(f"D-pad {hat} moved to {value}")
+    def handle_button_press(self, button):
+        print(f"Button {button} pressed")
 
-def main():
-    pygame.init()
-    pygame.joystick.init()
+    def handle_button_release(self, button):
+        print(f"Button {button} released")
 
-    if pygame.joystick.get_count() == 0:
-        print("No joystick detected.")
-        return
+    def handle_axis_motion(self, axis, value):
+        # R2 and L2 triggers
+        if axis in [2, 5]:
+            print(f"Trigger {axis} moved to {value}")
+        else:
+            pass
+            # print(f"Axis {axis} moved to {value}")
 
-    joystick = pygame.joystick.Joystick(0)
-    joystick.init()
-    print(f"Detected Joystick: {joystick.get_name()}")
+    def handle_hat_motion(self, hat, value):
+        print(f"D-pad {hat} moved to {value}")
 
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.JOYBUTTONDOWN:
-                handle_button_press(event.button)
-            elif event.type == pygame.JOYBUTTONUP:
-                handle_button_release(event.button)
-            elif event.type == pygame.JOYAXISMOTION:
-                handle_axis_motion(event.axis, event.value)
-            elif event.type == pygame.JOYHATMOTION:
-                handle_hat_motion(event.hat, event.value)
+    def run(self):
+        if not self.joystick:
+            return
 
-    pygame.quit()
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.JOYBUTTONDOWN:
+                    self.handle_button_press(event.button)
+                elif event.type == pygame.JOYBUTTONUP:
+                    self.handle_button_release(event.button)
+                elif event.type == pygame.JOYAXISMOTION:
+                    self.handle_axis_motion(event.axis, event.value)
+                elif event.type == pygame.JOYHATMOTION:
+                    self.handle_hat_motion(event.hat, event.value)
+
+        pygame.quit()
 
 if __name__ == "__main__":
-    main()
+    controller = PS5Controller()
+    controller.run()
