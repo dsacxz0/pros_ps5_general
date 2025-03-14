@@ -9,12 +9,13 @@ class PS5Controller:
         # 初始化 pygame 與介面
         pygame.init()
         pygame.joystick.init()
-        self.rosbridge_ip = ""  # 一開始不設定 IP，由使用者輸入
+        self.rosbridge_ip = ""  # 初始不設定 IP，由使用者輸入
         self.rosbridge_port = rosbridge_port
         self.velocity = 10.0
         self.direction = ""
-        self.input_mode = True  # 啟動時強制進入 IP 輸入模式
+        self.input_mode = True  # 啟動時先進入 IP 輸入模式
         self.ip_input = ""       # 暫存使用者輸入的 IP 字串
+        self.connection_error = ""  # 儲存連線錯誤訊息
         self.font = pygame.font.SysFont("Arial", 24)
         self.screen = pygame.display.set_mode((800, 600))
         pygame.display.set_caption("PS5 Controller UI")
@@ -35,14 +36,17 @@ class PS5Controller:
         self.rosbridge_ip = ip
         self.ws_url = f"ws://{ip}:{self.rosbridge_port}"
         try:
-            self.ws = websocket.create_connection(self.ws_url)
+            # 設定 timeout 避免連線卡住
+            self.ws = websocket.create_connection(self.ws_url, timeout=3)
+            self.connection_error = ""  # 連線成功則清空錯誤訊息
             print(f"Connected to rosbridge via websocket at {self.ws_url}")
             # 連線成功後先 advertise topic
             self.advertise_topic("/car_C_rear_wheel", "std_msgs/Float32MultiArray")
             self.advertise_topic("/car_C_front_wheel", "std_msgs/Float32MultiArray")
         except Exception as e:
-            print(f"Failed to connect to rosbridge at {self.ws_url}: {e}")
             self.ws = None
+            self.connection_error = str(e)
+            print(f"Failed to connect to rosbridge at {self.ws_url}: {self.connection_error}")
 
     def disconnect_rosbridge(self):
         if self.ws:
@@ -166,10 +170,9 @@ class PS5Controller:
                 if event.type == pygame.QUIT:
                     running = False
 
-                # 處理鍵盤事件
                 elif event.type == pygame.KEYDOWN:
+                    # 輸入模式中累積使用者輸入
                     if self.input_mode:
-                        # 輸入模式中累積使用者輸入
                         if event.key == pygame.K_RETURN:
                             # 使用者按 Enter 確認輸入，若有輸入內容則更新 rosbridge 連線
                             if self.ip_input:
@@ -181,12 +184,17 @@ class PS5Controller:
                         else:
                             self.ip_input += event.unicode
                     else:
-                        # 非輸入模式下，按 I 可切換回輸入模式（重新連線）
+                        # 非輸入模式下，按 I 切換到 IP 輸入模式
                         if event.key == pygame.K_i:
                             self.input_mode = True
                             self.ip_input = ""
+                        # 按 Q 斷開連線後自動切換到 IP 輸入模式
+                        elif event.key == pygame.K_q:
+                            self.disconnect_rosbridge()
+                            self.input_mode = True
+                            self.ip_input = ""
 
-                # 處理搖桿事件（僅在非輸入模式時回應）
+                # 只在非輸入模式時處理搖桿事件
                 if not self.input_mode:
                     if event.type == pygame.JOYBUTTONDOWN:
                         self.handle_button_press(event.button)
@@ -209,13 +217,18 @@ class PS5Controller:
             connection_text = self.font.render(f"ROSBridge ({self.rosbridge_ip}): {connection_status}", True, (255, 255, 255))
             self.screen.blit(connection_text, (10, 40))
 
-            # 顯示提示訊息：若正在輸入則提示輸入新 IP，否則提示按 I 可重新輸入
+            # 顯示連線錯誤訊息（若有）
+            if self.connection_error:
+                error_text = self.font.render(f"Error: {self.connection_error}", True, (255, 0, 0))
+                self.screen.blit(error_text, (10, 70))
+
+            # 顯示提示訊息
             if self.input_mode:
                 input_box = self.font.render(f"Enter new ROSBridge IP: {self.ip_input}", True, (0, 255, 0))
-                self.screen.blit(input_box, (10, 70))
+                self.screen.blit(input_box, (10, 100))
             else:
-                instructions = self.font.render("Press 'I' to input new ROSBridge IP", True, (255, 255, 0))
-                self.screen.blit(instructions, (10, 70))
+                instructions = self.font.render("Press 'I' to input new IP, 'Q' to disconnect", True, (255, 255, 0))
+                self.screen.blit(instructions, (10, 100))
 
             pygame.display.flip()
             clock.tick(30)
