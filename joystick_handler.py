@@ -1,4 +1,3 @@
-# joystick_handler.py
 import pygame
 import time
 import math
@@ -20,22 +19,33 @@ class JoystickHandler:
         self.velocity = 10.0
         self.arm_joints_count = num_joints
         self.arm_angles = [0.0] * self.arm_joints_count
-        self.joint_limits = [(0.0, math.radians(180)) for _ in range(self.arm_joints_count)]
+        self.joint_limits = [(0.0, math.radians(180)) for _  in range(self.arm_joints_count)]
         self.arm_index = 0
         self.arm_topic = "/robot_arm"
-        self.angle_step_deg = 10.0
+        self.angle_step_deg = 10.0    # 每次增/減的角度 (預設 10 度)
+        self.speed_incr = 5.0         # 每次加減的速度值 (預設 5)
+        # 預設前後輪 topic 與 cmd 讀取範圍
+        self.front_wheel_topic = "/car_C_front_wheel"
+        self.rear_wheel_topic  = "/car_C_rear_wheel"
+        self.front_wheel_range = (0, 2)   # 默認讀取 cmd[0:2]
+        self.rear_wheel_range  = (2, 4)   # 默認讀取 cmd[2:4]
 
-        # 從單一 CSV 檔案讀取所有設定
+        # 從 CSV 載入設定
         self.load_config("config.csv")
 
     def load_config(self, filename="config.csv"):
         """
-        從 CSV 檔案讀取所有設定，CSV 格式範例如下（含表頭）：
+        讀取 CSV 檔案，格式範例如下（含表頭）：
 
         type,param,value1,value2
         global,joints_count,6,
         global,angle_step,15,
         global,arm_topic,/robot_arm,
+        global,speed_step,5,
+        global,front_wheel_topic,/car_C_front_wheel,
+        global,rear_wheel_topic,/car_C_rear_wheel,
+        global,front_wheel_range,0-2,
+        global,rear_wheel_range,2-4,
         joint,1,0,180
         joint,2,0,180
         joint,3,0,180
@@ -53,13 +63,31 @@ class JoystickHandler:
                         global_params[row["param"]] = row["value1"]
                     elif row["type"] == "joint":
                         joint_rows.append(row)
-            # 讀取全域參數
+            # 全域參數讀取
             if "joints_count" in global_params:
                 self.arm_joints_count = int(global_params["joints_count"])
             if "angle_step" in global_params:
                 self.angle_step_deg = float(global_params["angle_step"])
             if "arm_topic" in global_params and global_params["arm_topic"]:
                 self.arm_topic = global_params["arm_topic"]
+            if "speed_step" in global_params:
+                self.speed_incr = float(global_params["speed_step"])
+            if "front_wheel_topic" in global_params and global_params["front_wheel_topic"]:
+                self.front_wheel_topic = global_params["front_wheel_topic"]
+            if "rear_wheel_topic" in global_params and global_params["rear_wheel_topic"]:
+                self.rear_wheel_topic = global_params["rear_wheel_topic"]
+            if "front_wheel_range" in global_params:
+                try:
+                    parts = global_params["front_wheel_range"].split("-")
+                    self.front_wheel_range = (int(parts[0]), int(parts[1]))
+                except:
+                    self.front_wheel_range = (0, 2)
+            if "rear_wheel_range" in global_params:
+                try:
+                    parts = global_params["rear_wheel_range"].split("-")
+                    self.rear_wheel_range = (int(parts[0]), int(parts[1]))
+                except:
+                    self.rear_wheel_range = (2, 4)
             # 讀取各關節上下限
             joint_rows.sort(key=lambda x: int(x["param"]))  # 根據 joint 編號排序
             self.joint_limits = []
@@ -72,7 +100,9 @@ class JoystickHandler:
                     self.joint_limits.append((0.0, math.radians(180)))
             self.arm_angles = [0.0] * self.arm_joints_count
             self.arm_index = 0
-            print(f"Loaded config: {self.arm_joints_count} joints, angle step {self.angle_step_deg} deg, arm topic {self.arm_topic}")
+            print(f"Loaded config: {self.arm_joints_count} joints, angle step {self.angle_step_deg} deg, speed step {self.speed_incr},")
+            print(f"arm topic: {self.arm_topic}, front wheel topic: {self.front_wheel_topic}, rear wheel topic: {self.rear_wheel_topic}")
+            print(f"front wheel range: {self.front_wheel_range}, rear wheel range: {self.rear_wheel_range}")
         except FileNotFoundError:
             print(f"Config CSV '{filename}' not found, using defaults.")
         except Exception as e:
@@ -110,10 +140,10 @@ class JoystickHandler:
             self.clip_arm_angles()
             arm_publish_callback({"positions": self.arm_angles})
         elif button == 9:   # L1：減速
-            self.velocity -= 5.0
+            self.velocity -= self.speed_incr
             self.velocity = vel_limit(self.velocity)
         elif button == 10:  # R1：加速
-            self.velocity += 5.0
+            self.velocity += self.speed_incr
             self.velocity = vel_limit(self.velocity)
         elif button == 1:   # 增加當前關節角度
             self.arm_angles[self.arm_index] += step_radians
