@@ -15,7 +15,7 @@ def publish_wheel(ws_client, cmd):
             }],
             "data_offset": 0
         },
-        "data": cmd  # 此範例直接傳送 4 個數值，依實際需求調整
+        "data": cmd[2:4]  # 此範例直接傳送 4 個數值，依實際需求調整
     }
     front_msg = {
         "layout": {

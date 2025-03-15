@@ -1,0 +1,10 @@
+type,param,value1,value2
+global,joints_count,6,
+global,angle_step,15,
+global,arm_topic,/robot_arm,
+joint,1,0,180
+joint,2,0,180
+joint,3,0,180
+joint,4,0,180
+joint,5,0,180
+joint,6,0,180
