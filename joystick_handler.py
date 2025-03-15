@@ -30,6 +30,8 @@ class JoystickHandler:
         self.front_wheel_range = (0, 2)   # 默認讀取 cmd[0:2]
         self.rear_wheel_range  = (2, 4)   # 默認讀取 cmd[2:4]
 
+        self.reset_arm_angle = 0.0  # 初始化 reset_arm_angle 屬性
+
         # 從 CSV 載入設定
         self.load_config("config.csv")
 
