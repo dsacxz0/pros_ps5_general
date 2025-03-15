@@ -82,7 +82,11 @@ def main():
             # 非輸入模式下處理搖桿事件
             if not input_mode:
                 if event.type == pygame.JOYBUTTONDOWN:
-                    joystick_handler.process_button_press(event.button, publish_callback=lambda cmd: publish_wheel(ws_client, cmd))
+                    joystick_handler.process_button_press(
+                        event.button,
+                        wheel_publish_callback=lambda cmd: publish_wheel(ws_client, cmd),
+                        arm_publish_callback=lambda arm_msg: ws_client.publish("/robot_arm", arm_msg)
+                    )
                 elif event.type == pygame.JOYAXISMOTION:
                     joystick_handler.process_axis_motion(event.axis, event.value)
                 # 可根據需求擴充 JOYBUTTONUP、JOYHATMOTION 等事件

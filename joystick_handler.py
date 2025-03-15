@@ -26,21 +26,21 @@ class JoystickHandler:
         self.arm_index = 0
 
     def clip_arm_angles(self):
-        """限制所有關節角度在 0 ~ 180 度"""
+        """限制所有關節角度在 0 ~ 180 度（以弧度表示）"""
         for i in range(self.arm_joints_count):
             self.arm_angles[i] = max(0.0, min(self.arm_angles[i], math.radians(180)))
 
-    def process_button_press(self, button, publish_callback):
+    def process_button_press(self, button, wheel_publish_callback, arm_publish_callback):
         if button == 11:  # 前進
-            publish_callback([self.velocity, self.velocity, self.velocity, self.velocity])
+            wheel_publish_callback([self.velocity, self.velocity, self.velocity, self.velocity])
         elif button == 12:  # 後退
-            publish_callback([-self.velocity, -self.velocity, -self.velocity, -self.velocity])
+            wheel_publish_callback([-self.velocity, -self.velocity, -self.velocity, -self.velocity])
         elif button == 13:  # 左轉
-            publish_callback([-self.velocity, self.velocity, -self.velocity, self.velocity])
+            wheel_publish_callback([-self.velocity, self.velocity, -self.velocity, self.velocity])
         elif button == 14:  # 右轉
-            publish_callback([self.velocity, -self.velocity, self.velocity, -self.velocity])
+            wheel_publish_callback([self.velocity, -self.velocity, self.velocity, -self.velocity])
         elif button == 7:   # 停止
-            publish_callback([0.0, 0.0, 0.0, 0.0])
+            wheel_publish_callback([0.0, 0.0, 0.0, 0.0])
         elif button == 9:   # L1：減速
             self.velocity -= 5.0
             self.velocity = vel_limit(self.velocity)
@@ -57,9 +57,8 @@ class JoystickHandler:
             self.arm_angles[self.arm_index] -= math.radians(10)
 
         self.clip_arm_angles()
-        # 若需發送 (例如 trajectory_msgs/msg/JointTrajectoryPoint 格式)
-        # point_msg = {"positions": self.arm_angles}
-        # publish_callback(point_msg)
+        # 發送手臂關節訊息 (trajectory_msgs/msg/JointTrajectoryPoint 格式)
+        arm_publish_callback({"positions": self.arm_angles})
         time.sleep(0.01)
 
     def process_axis_motion(self, axis, value):
