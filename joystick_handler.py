@@ -48,13 +48,14 @@ class JoystickHandler:
             self.velocity += 5.0
             self.velocity = vel_limit(self.velocity)
         elif button == 1:  # 選擇下一個關節
-            self.arm_index = min(self.arm_index + 1, self.arm_joints_count - 1)
-        elif button == 2:  # 選擇上一個關節
-            self.arm_index = max(self.arm_index - 1, 0)
-        elif button == 3:  # 當前關節角度 +10 度
             self.arm_angles[self.arm_index] += math.radians(10)
-        elif button == 0:  # 當前關節角度 -10 度
+        elif button == 2:  # 選擇上一個關節
             self.arm_angles[self.arm_index] -= math.radians(10)
+        elif button == 3:  # 當前關節角度 +10 度
+            self.arm_index = max(self.arm_index - 1, 0)
+        elif button == 0:  # 當前關節角度 -10 度
+            self.arm_index = min(self.arm_index + 1, self.arm_joints_count - 1)
+
 
         self.clip_arm_angles()
         # 發送手臂關節訊息 (trajectory_msgs/msg/JointTrajectoryPoint 格式)
