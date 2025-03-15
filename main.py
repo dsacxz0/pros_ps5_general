@@ -89,7 +89,16 @@ def main():
 
         # 根據連線狀態決定顯示文字
         connection_status = "Connected" if ws_client.ws else "Disconnected"
-        ui.draw(joystick_handler.velocity, rosbridge_ip, connection_status, connection_error, input_mode, ip_input)
+        ui.draw(
+            joystick_handler.velocity,
+            rosbridge_ip,
+            connection_status,
+            connection_error,
+            input_mode,
+            ip_input,
+            joystick_handler.arm_index,
+            joystick_handler.arm_angles
+        )
         clock.tick(30)
 
     ws_client.disconnect()
