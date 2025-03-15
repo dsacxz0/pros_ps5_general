@@ -74,11 +74,10 @@ def main():
                     if event.key == pygame.K_i:
                         input_mode = True
                         ip_input = ""
-                    # 按 Q 斷線並進入 IP 輸入模式
+                    # 按 Q 斷線並結束程式
                     elif event.key == pygame.K_q:
                         ws_client.disconnect()
-                        input_mode = True
-                        ip_input = ""
+                        running = False
 
             # 非輸入模式下處理搖桿事件
             if not input_mode:
