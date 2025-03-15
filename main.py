@@ -61,6 +61,9 @@ def main():
                                 # 連線成功後 advertise topic
                                 ws_client.advertise_topic("/car_C_rear_wheel", "std_msgs/Float32MultiArray")
                                 ws_client.advertise_topic("/car_C_front_wheel", "std_msgs/Float32MultiArray")
+
+                                # Advertise arm topic (loaded from txt)
+                                ws_client.advertise_topic(joystick_handler.arm_topic, "trajectory_msgs/JointTrajectoryPoint")
                             else:
                                 connection_error = "Connection failed"
                         input_mode = False
@@ -85,7 +88,7 @@ def main():
                     joystick_handler.process_button_press(
                         event.button,
                         wheel_publish_callback=lambda cmd: publish_wheel(ws_client, cmd),
-                        arm_publish_callback=lambda arm_msg: ws_client.publish("/robot_arm", arm_msg)
+                        arm_publish_callback=lambda arm_msg: ws_client.publish(joystick_handler.arm_topic, arm_msg)
                     )
                 elif event.type == pygame.JOYAXISMOTION:
                     joystick_handler.process_axis_motion(event.axis, event.value)

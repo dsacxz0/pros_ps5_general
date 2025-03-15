@@ -12,25 +12,29 @@ class JoystickHandler:
             self.joystick = None
         else:
             self.joystick = pygame.joystick.Joystick(0)
-            self.joystick.init()
+            self.joystick.init()  # 初始化搖桿
             print(f"Detected Joystick: {self.joystick.get_name()}")
+
         self.velocity = 10.0
-        # Default configuration in case loading fails
         self.arm_joints_count = num_joints
         self.arm_angles = [0.0] * self.arm_joints_count
-        # Each element is a tuple (lower_limit, upper_limit) in radians, default 0 ~ 180°
+        # Each element is a tuple (lower_limit, upper_limit) in radians, default 0~180°
         self.joint_limits = [(0.0, math.radians(180)) for _ in range(self.arm_joints_count)]
         self.arm_index = 0
+        # Default robot arm topic
+        self.arm_topic = "/robot_arm"
 
-        # Try to load configuration from txt file
+        # Load joint configuration from joint_config.txt
         self.load_joint_config("joint_config.txt")
+        # Load arm topic from arm_topic.txt
+        self.load_arm_topic("arm_topic.txt")
 
     def load_joint_config(self, filename):
         """
         讀取 joint_config.txt 檔案：
         第一行為關節數量，
-        接下來每一行包含該關節的下限和上限（單位：度），以空白分隔。
-        例如：
+        接下來每一行包含關節的下限和上限（單位：度），以空白分隔。
+        範例：
             5
             0 180
             0 180
@@ -48,8 +52,8 @@ class JoystickHandler:
             self.arm_angles = [0.0] * count
             self.joint_limits = []
             for i in range(count):
-                if i+1 < len(lines):
-                    parts = lines[i+1].split()
+                if i + 1 < len(lines):
+                    parts = lines[i + 1].split()
                     if len(parts) >= 2:
                         lower = math.radians(float(parts[0]))
                         upper = math.radians(float(parts[1]))
@@ -58,11 +62,32 @@ class JoystickHandler:
                         self.joint_limits.append((0.0, math.radians(180)))
                 else:
                     self.joint_limits.append((0.0, math.radians(180)))
-            # Reset the selected joint index to 0
             self.arm_index = 0
             print(f"Loaded joint config: {self.arm_joints_count} joints")
         except Exception as e:
             print("Error loading joint config:", e)
+
+    def load_arm_topic(self, filename="arm_topic.txt"):
+        """
+        讀取 arm_topic.txt 檔案，若檔案為空或找不到檔案，則使用 "/robot_arm"。
+        檔案內容範例：
+            /my/robot/arm_topic
+        """
+        try:
+            with open(filename, "r") as f:
+                content = f.read().strip()
+                if content:
+                    self.arm_topic = content
+                    print(f"Loaded arm topic from {filename}: {self.arm_topic}")
+                else:
+                    self.arm_topic = "/robot_arm"
+                    print(f"{filename} is empty, using default arm topic: {self.arm_topic}")
+        except FileNotFoundError:
+            self.arm_topic = "/robot_arm"
+            print(f"{filename} not found, using default arm topic: {self.arm_topic}")
+        except Exception as e:
+            self.arm_topic = "/robot_arm"
+            print("Error loading arm topic:", e)
 
     def set_joint_count(self, count):
         """指定有多少個關節 (不使用檔案時)"""
@@ -72,7 +97,7 @@ class JoystickHandler:
         self.arm_index = 0
 
     def clip_arm_angles(self):
-        """限制所有關節角度在各自上下限之間（以弧度表示）"""
+        """限制各關節角度在其上下限之間（以弧度表示）"""
         for i in range(self.arm_joints_count):
             lower, upper = self.joint_limits[i]
             self.arm_angles[i] = max(lower, min(self.arm_angles[i], upper))
@@ -98,17 +123,17 @@ class JoystickHandler:
         elif button == 10:  # R1：加速
             self.velocity += 5.0
             self.velocity = vel_limit(self.velocity)
-        elif button == 1: # 加10度
+        elif button == 1:   # 加10度
             self.arm_angles[self.arm_index] += math.radians(10)
             self.clip_arm_angles()
             arm_publish_callback({"positions": self.arm_angles})
-        elif button == 2: # 減10度
+        elif button == 2:   # 減10度
             self.arm_angles[self.arm_index] -= math.radians(10)
             self.clip_arm_angles()
             arm_publish_callback({"positions": self.arm_angles})
-        elif button == 3:  # 上個關節
+        elif button == 3:   # 上個關節
             self.arm_index = max(self.arm_index - 1, 0)
-        elif button == 0:  # 下個關節
+        elif button == 0:   # 下個關節
             self.arm_index = min(self.arm_index + 1, self.arm_joints_count - 1)
 
         time.sleep(0.01)
@@ -116,7 +141,7 @@ class JoystickHandler:
     def process_axis_motion(self, axis, value):
         if axis in [2, 5]:
             mapped_value = map_trigger_value(value)
-            # 如需要，可根據 mapped_value 更新速度，例如：
+            # 如需要，可根據 mapped_value 更新速度
             # self.velocity = mapped_value
 
     def get_joystick(self):
