@@ -5,7 +5,7 @@ import math
 from utils import map_trigger_value, vel_limit
 
 class JoystickHandler:
-    def __init__(self, num_joints=6):
+    def __init__(self, num_joints=5):
         pygame.joystick.init()
         if pygame.joystick.get_count() == 0:
             print("No joystick detected.")
@@ -41,25 +41,32 @@ class JoystickHandler:
             wheel_publish_callback([self.velocity, -self.velocity, self.velocity, -self.velocity])
         elif button == 7:   # 停止
             wheel_publish_callback([0.0, 0.0, 0.0, 0.0])
+        elif button == 8:   # 停止
+            self.arm_angles = [0.0] * self.arm_joints_count
+            self.clip_arm_angles()
+            arm_publish_callback({"positions": self.arm_angles})
         elif button == 9:   # L1：減速
             self.velocity -= 5.0
             self.velocity = vel_limit(self.velocity)
         elif button == 10:  # R1：加速
             self.velocity += 5.0
             self.velocity = vel_limit(self.velocity)
-        elif button == 1:  # 選擇下一個關節
+        elif button == 1: # 加10度
             self.arm_angles[self.arm_index] += math.radians(10)
-        elif button == 2:  # 選擇上一個關節
+            self.clip_arm_angles()
+            arm_publish_callback({"positions": self.arm_angles})
+        elif button == 2: # 減10度
             self.arm_angles[self.arm_index] -= math.radians(10)
-        elif button == 3:  # 當前關節角度 +10 度
+            self.clip_arm_angles()
+            arm_publish_callback({"positions": self.arm_angles})
+        elif button == 3:  # 上個關節
             self.arm_index = max(self.arm_index - 1, 0)
-        elif button == 0:  # 當前關節角度 -10 度
+        elif button == 0:  # 下個關節
             self.arm_index = min(self.arm_index + 1, self.arm_joints_count - 1)
 
 
-        self.clip_arm_angles()
-        # 發送手臂關節訊息 (trajectory_msgs/msg/JointTrajectoryPoint 格式)
-        arm_publish_callback({"positions": self.arm_angles})
+
+
         time.sleep(0.01)
 
     def process_axis_motion(self, axis, value):

@@ -39,7 +39,7 @@ class RosbridgeClient:
         }
         try:
             self.ws.send(json.dumps(advertise_msg))
-            print(f"Advertised topic {topic} with type {msg_type}")
+            # print(f"Advertised topic {topic} with type {msg_type}")
         except Exception as e:
             print(f"Failed to advertise topic {topic}: {e}")
 
@@ -54,6 +54,6 @@ class RosbridgeClient:
         }
         try:
             self.ws.send(json.dumps(publish_msg))
-            print(f"Published to {topic}")
+            # print(f"Published to {topic}")
         except Exception as e:
             print(f"Failed to publish on {topic}: {e}")
