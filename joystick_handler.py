@@ -82,6 +82,10 @@ class JoystickHandler:
                     self.front_wheel_range = (int(parts[0]), int(parts[1]))
                 except:
                     self.front_wheel_range = (0, 2)
+            if "reset_arm_angle" in global_params and global_params["reset_arm_angle"]:
+                self.reset_arm_angle = float(global_params["reset_arm_angle"])
+            else:
+                self.reset_arm_angle = 0.0
             if "rear_wheel_range" in global_params:
                 try:
                     parts = global_params["rear_wheel_range"].split("-")
@@ -135,8 +139,9 @@ class JoystickHandler:
             wheel_publish_callback([self.velocity, -self.velocity, self.velocity, -self.velocity])
         elif button == 7:   # 停止
             wheel_publish_callback([0.0, 0.0, 0.0, 0.0])
-        elif button == 8:   # 重設所有手臂角度為 0
-            self.arm_angles = [0.0] * self.arm_joints_count
+        elif button == 8:   # 重設所有手臂角度為 CSV 設定的值
+            reset_val = math.radians(self.reset_arm_angle)
+            self.arm_angles = [reset_val] * self.arm_joints_count
             self.clip_arm_angles()
             arm_publish_callback({"positions": self.arm_angles})
         elif button == 9:   # L1：減速
