@@ -2,6 +2,7 @@ import pygame
 import time
 import math
 import csv
+import numpy
 from utils import map_trigger_value, vel_limit
 
 class JoystickHandler:
@@ -31,6 +32,8 @@ class JoystickHandler:
         self.rear_wheel_range  = (2, 4)   # 默認讀取 cmd[2:4]
 
         self.reset_arm_angle = 0.0  # 初始化 reset_arm_angle 屬性
+
+        
 
         # 從 CSV 載入設定
         self.load_config("config.csv")
@@ -167,11 +170,38 @@ class JoystickHandler:
 
         time.sleep(0.01)
 
-    def process_axis_motion(self, axis, value):
+    def process_axis_motion(self, axis, value, wheel_publish_callback):
         if axis in [2, 5]:
             mapped_value = map_trigger_value(value)
             # 如需要，可根據 mapped_value 更新 self.velocity
-            # self.velocity = mapped_value
+            # self.velocity = mapped_value        
+
+        axis_vertical = 0
+        axis_horizontal = 0
+        axis_rotational = 0
+
+        if axis == 0:
+            axis_horizontal = value
+        if axis == 1:
+            axis_vertical = value
+        if axis == 3:
+            axis_rotational = value
+
+        frontLeft = axis_vertical + axis_horizontal + axis_rotational
+        frontRight = axis_vertical - axis_horizontal - axis_rotational        
+        rearLeft = axis_vertical - axis_horizontal + axis_rotational
+        rearRight = axis_vertical + axis_horizontal - axis_rotational
+
+        vector4 = numpy.array([frontLeft,frontRight,rearLeft,rearRight])
+        magnitude = numpy.linalg.norm(vector4)
+        if magnitude > 0:
+            vector4 = vector4 / magnitude  # Normalize
+        else:
+            vector4 = numpy.zeros_like(vector4)  # Prevent NaN issues
+
+        wheel_publish_callback([vector4[0] * self.velocity, vector4[1] * self.velocity, vector4[2] * self.velocity, vector4[3] * self.velocity])
+        
+
 
     def get_joystick(self):
         return self.joystick

@@ -104,7 +104,21 @@ def main():
                         arm_publish_callback=lambda arm_msg: ws_client.publish(joystick_handler.arm_topic, arm_msg)
                     )
                 elif event.type == pygame.JOYAXISMOTION:
-                    joystick_handler.process_axis_motion(event.axis, event.value)
+                    joystick_handler.process_axis_motion(
+                        event.axis, 
+                        event.value, 
+                        wheel_publish_callback=lambda cmd: publish_wheel(ws_client, cmd,
+                            joystick_handler.front_wheel_topic,
+                            joystick_handler.rear_wheel_topic,
+                            joystick_handler.front_wheel_range,
+                            joystick_handler.rear_wheel_range)
+                    )
+                else:
+                    publish_wheel(ws_client, [0,0,0,0],
+                            joystick_handler.front_wheel_topic,
+                            joystick_handler.rear_wheel_topic,
+                            joystick_handler.front_wheel_range,
+                            joystick_handler.rear_wheel_range)
 
         connection_status = "Connected" if ws_client.ws else "Disconnected"
         ui.draw(
