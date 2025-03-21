@@ -75,6 +75,12 @@ This CSV file is used to configure various aspects of the robot control system. 
 - **value1**: The primary value (e.g., port number, angle, topic name, etc.).
 - **value2**: Additional value (if needed).
 
+Test the mapping of your controller: 
+  ```bash
+  python mapping_tester.py
+  ```
+Change the values in config.csv to the corresponding ID of your controller
+
 ## Global Parameters
 
 Global settings are defined on rows where `type` is **global**. Below is a description of each global parameter:
@@ -118,6 +124,26 @@ Global settings are defined on rows where `type` is **global**. Below is a descr
 - **reset_arm_angle**
   The angle (in degrees) used to reset all joint angles when requested.
   *Example*: `30`
+
+- **left_stick_horizontal**
+  Axis ID for the left stick's horizontal movement (left-right)
+  *Example*: `0`
+
+- **left_stick_vertical**
+  Axis ID for the left stick's vertical movement (up-down)
+  *Example*: `1`
+
+- **right_stick_horizontal**
+  Axis ID for the right stick's horizontal movement (left-right)
+  *Example*: `2`
+
+- **right_stick_vertical**
+  Axis ID for the right stick's vertical movement (up-down)
+  *Example*: `3`
+
+- **min_joystick_value**
+  A minimum value for recognizing the joystick as moved to prevent drifting
+  *Example*: `0.1`
 
 ## Joint Parameters
 

@@ -9,7 +9,7 @@ class UI:
         pygame.display.set_caption("PS5 Controller UI")
         self.font = pygame.font.SysFont("Arial", 24)
 
-    def draw(self, velocity, rosbridge_ip, connection_status, connection_error, input_mode, ip_input, arm_index, arm_angles):
+    def draw(self, velocity, rosbridge_ip, connection_status, connection_error, input_mode, ip_input, arm_index, arm_angles, wheel_speed):
         self.screen.fill((0, 0, 0))
 
         # 顯示速度
@@ -54,5 +54,8 @@ class UI:
                     (255, 255, 255)
                 )
             self.screen.blit(angle_text, (10, start_y + i * 30))
+
+        wheel_speed_text = self.font.render(f"Wheel Speed: {wheel_speed}", True, (255, 255, 255))
+        self.screen.blit(wheel_speed_text, (10, 400))
 
         pygame.display.flip()

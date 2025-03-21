@@ -15,3 +15,8 @@ joint,3,0,180
 joint,4,0,180
 joint,5,0,180
 joint,6,0,180
+global,left_stick_horizontal,0,
+global,left_stick_vertical,1,
+global,right_stick_horizontal,2,
+global,right_stick_vertical,3,
+global,min_joystick_value,0.1,

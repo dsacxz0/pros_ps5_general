@@ -2,7 +2,6 @@ import pygame
 import time
 import math
 import csv
-import numpy
 from utils import map_trigger_value, vel_limit
 
 class JoystickHandler:
@@ -33,7 +32,17 @@ class JoystickHandler:
 
         self.reset_arm_angle = 0.0  # 初始化 reset_arm_angle 屬性
 
-        
+        #controller joystick axis
+        self.left_stick_horizontal = 0
+        self.left_stick_vertical = 1
+        self.right_stick_horizontal = 2
+        self.right_stick_vertical = 3
+
+        self.wheel_speed = [0, 0, 0, 0] #wheel speed for gui
+
+        #minimal joystick value to prevent drifting
+        self.min_joystick_value = 0.1
+
 
         # 從 CSV 載入設定
         self.load_config("config.csv")
@@ -97,6 +106,17 @@ class JoystickHandler:
                     self.rear_wheel_range = (int(parts[0]), int(parts[1]))
                 except:
                     self.rear_wheel_range = (2, 4)
+            if "left_stick_horizontal" in global_params:
+                self.left_stick_horizontal = int (global_params["left_stick_horizontal"])
+            if "left_stick_vertical" in global_params:
+                self.left_stick_vertical = int (global_params["left_stick_vertical"])
+            if "right_stick_horizontal" in global_params:
+                self.right_stick_horizontal = int (global_params["right_stick_horizontal"])
+            if "right_stick_vertical" in global_params:
+                self.right_stick_vertical = int (global_params["right_stick_vertical"])
+            if "min_joystick_value" in global_params:
+                self.min_joystick_value = int (global_params["min_joystick_value"])
+            
             # 讀取各關節上下限
             joint_rows.sort(key=lambda x: int(x["param"]))  # 根據 joint 編號排序
             self.joint_limits = []
@@ -176,31 +196,31 @@ class JoystickHandler:
             # 如需要，可根據 mapped_value 更新 self.velocity
             # self.velocity = mapped_value        
 
-        axis_vertical = 0
-        axis_horizontal = 0
-        axis_rotational = 0
+    def process_joystick_continous(self, joysticks, wheel_publish_callback):
+        for joystick in joysticks.values():
 
-        if axis == 0:
-            axis_horizontal = value
-        if axis == 1:
-            axis_vertical = value
-        if axis == 3:
-            axis_rotational = value
+            axis_vertical = 0
+            axis_horizontal = 0
+            axis_rotational = 0
 
-        frontLeft = axis_vertical + axis_horizontal + axis_rotational
-        frontRight = axis_vertical - axis_horizontal - axis_rotational        
-        rearLeft = axis_vertical - axis_horizontal + axis_rotational
-        rearRight = axis_vertical + axis_horizontal - axis_rotational
+            #get left stick horizontal axis
+            if abs(joystick.get_axis(self.left_stick_horizontal)) > self.min_joystick_value:
+                axis_horizontal = joystick.get_axis(self.left_stick_horizontal)
+            #get left stick vertical axis
+            if abs(joystick.get_axis(self.left_stick_vertical)) > self.min_joystick_value:
+                axis_vertical = -joystick.get_axis(self.left_stick_vertical)
+            #get right stick horizontal axis
+            if abs(joystick.get_axis(self.right_stick_horizontal)) > self.min_joystick_value:
+                axis_rotational = joystick.get_axis(self.right_stick_horizontal)
 
-        vector4 = numpy.array([frontLeft,frontRight,rearLeft,rearRight])
-        magnitude = numpy.linalg.norm(vector4)
-        if magnitude > 0:
-            vector4 = vector4 / magnitude  # Normalize
-        else:
-            vector4 = numpy.zeros_like(vector4)  # Prevent NaN issues
+            frontLeft = axis_vertical + axis_horizontal + axis_rotational
+            frontRight = axis_vertical - axis_horizontal - axis_rotational        
+            rearLeft = axis_vertical - axis_horizontal + axis_rotational
+            rearRight = axis_vertical + axis_horizontal - axis_rotational
 
-        wheel_publish_callback([vector4[0] * self.velocity, vector4[1] * self.velocity, vector4[2] * self.velocity, vector4[3] * self.velocity])
-        
+            finalWheelSpeed = [frontLeft * self.velocity, frontRight * self.velocity, rearLeft * self.velocity, rearRight * self.velocity]
+            wheel_publish_callback(finalWheelSpeed)
+            self.wheel_speed = finalWheelSpeed
 
 
     def get_joystick(self):
