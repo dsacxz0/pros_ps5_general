@@ -10,6 +10,7 @@ This project allows you to control a robot using a PS5 DualSense controller.
 - **ui.py:** Implements the Pygame-based UI for displaying application data.
 - **utils.py:** Contains helper functions (e.g., trigger value mapping, velocity limits).
 - **README.md:** This documentation file.
+- **mapping_tester.py:** For testing controller mapping.
 
 ## Requirements
 
