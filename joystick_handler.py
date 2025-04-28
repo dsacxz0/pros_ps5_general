@@ -38,6 +38,14 @@ class JoystickHandler:
         self.right_stick_horizontal = 2
         self.right_stick_vertical = 3
 
+        self.clockwise_rotation = 4
+        self.counterclockwise_rotation = 5
+
+        #controller button mapping
+        self.arm_up = 4
+        self.arm_down = 5
+
+
         self.wheel_speed = [0, 0, 0, 0] #wheel speed for gui
 
         #minimal joystick value to prevent drifting
@@ -114,8 +122,16 @@ class JoystickHandler:
                 self.right_stick_horizontal = int (global_params["right_stick_horizontal"])
             if "right_stick_vertical" in global_params:
                 self.right_stick_vertical = int (global_params["right_stick_vertical"])
+            if "clockwise_rotation" in global_params:
+                self.clockwise_rotation = int (global_params["clockwise_rotation"])
+            if "counterclockwise_rotation" in global_params:
+                self.counterclockwise_rotation = int (global_params["counterclockwise_rotation"])
+            if "arm_up" in global_params:
+                self.arm_up = int (global_params["arm_up"])
+            if "arm_down" in global_params:
+                self.arm_down = int (global_params["arm_down"])
             if "min_joystick_value" in global_params:
-                self.min_joystick_value = int (global_params["min_joystick_value"])
+                self.min_joystick_value = float (global_params["min_joystick_value"])
             
             # 讀取各關節上下限
             joint_rows.sort(key=lambda x: int(x["param"]))  # 根據 joint 編號排序
@@ -190,13 +206,13 @@ class JoystickHandler:
 
         time.sleep(0.01)
 
-    def process_axis_motion(self, axis, value, wheel_publish_callback):
+    def process_axis_motion(self, axis, value):
         if axis in [2, 5]:
             mapped_value = map_trigger_value(value)
             # 如需要，可根據 mapped_value 更新 self.velocity
             # self.velocity = mapped_value        
 
-    def process_joystick_continous(self, joysticks, wheel_publish_callback):
+    def process_joystick_continuous(self, joysticks, wheel_publish_callback):
         for joystick in joysticks.values():
 
             axis_vertical = 0
@@ -209,18 +225,81 @@ class JoystickHandler:
             #get left stick vertical axis
             if abs(joystick.get_axis(self.left_stick_vertical)) > self.min_joystick_value:
                 axis_vertical = -joystick.get_axis(self.left_stick_vertical)
-            #get right stick horizontal axis
-            if abs(joystick.get_axis(self.right_stick_horizontal)) > self.min_joystick_value:
-                axis_rotational = joystick.get_axis(self.right_stick_horizontal)
-
+            #get clockwise rotation axis (trigger button starts at -1 and ends at 1)
+            if abs((joystick.get_axis(self.clockwise_rotation) + 1) / 2) > self.min_joystick_value:
+                axis_rotational += (joystick.get_axis(self.clockwise_rotation) + 1) / 2
+            #get counterclockwise rotation axis (trigger button starts at -1 and ends at 1)
+            if abs((joystick.get_axis(self.counterclockwise_rotation) + 1) / 2) > self.min_joystick_value:
+                axis_rotational -= (joystick.get_axis(self.counterclockwise_rotation) + 1) / 2          
+            
+            #calculate mecanum wheel rotations
             frontLeft = axis_vertical + axis_horizontal + axis_rotational
             frontRight = axis_vertical - axis_horizontal - axis_rotational        
             rearLeft = axis_vertical - axis_horizontal + axis_rotational
             rearRight = axis_vertical + axis_horizontal - axis_rotational
 
-            finalWheelSpeed = [frontLeft * self.velocity, frontRight * self.velocity, rearLeft * self.velocity, rearRight * self.velocity]
-            wheel_publish_callback(finalWheelSpeed)
-            self.wheel_speed = finalWheelSpeed
+            self.wheel_speed = [frontLeft * self.velocity, frontRight * self.velocity, rearLeft * self.velocity, rearRight * self.velocity]
+            wheel_publish_callback(self.wheel_speed)
+
+            # #get right stick horizontal axis
+            # if abs(joystick.get_axis(self.right_stick_horizontal)) > self.min_joystick_value:
+            #     x = joystick.get_axis(self.right_stick_horizontal)
+            
+           
+            # z += joystick.get_button(self.arm_up)
+            # z -= joystick.get_button(self.arm_down)
+
+    def process_keypress_continuous(self, keys, wheel_publish_callback, arm_publish_callback, ik, joint_offset_degree):
+        axis_vertical = 0
+        axis_horizontal = 0
+        axis_rotational = 0
+
+        if keys[pygame.K_w]:
+            axis_vertical += 1
+        if keys[pygame.K_s]:
+            axis_vertical -= 1
+        if keys[pygame.K_d]:
+            axis_horizontal += 1
+        if keys[pygame.K_a]:
+            axis_horizontal -= 1
+        if keys[pygame.K_r]:
+            axis_rotational += 1
+        if keys[pygame.K_e]:
+            axis_rotational -= 1
+
+        frontLeft = axis_vertical + axis_horizontal + axis_rotational
+        frontRight = axis_vertical - axis_horizontal - axis_rotational        
+        rearLeft = axis_vertical - axis_horizontal + axis_rotational
+        rearRight = axis_vertical + axis_horizontal - axis_rotational
+
+        self.wheel_speed = [frontLeft * self.velocity, frontRight * self.velocity, rearLeft * self.velocity, rearRight * self.velocity]
+        wheel_publish_callback(self.wheel_speed)
+
+        dx = 0.00
+        dy = 0.00
+        dz = 0.00
+
+        movespeed = 0.05
+
+        if keys[pygame.K_UP]:
+            dy += movespeed
+        if keys[pygame.K_DOWN]:
+            dy -= movespeed
+        if keys[pygame.K_RIGHT]:
+            dx += movespeed
+        if keys[pygame.K_LEFT]:
+            dx -= movespeed
+        if keys[pygame.K_SPACE]:
+            dz += movespeed
+        if keys[pygame.K_LCTRL]:
+            dz -= movespeed
+        
+        self.arm_angles = ik.solve(dx,dy,dz)
+        # print(self.arm_angles)
+        joint_offset_radian = [math.radians(deg) for deg in joint_offset_degree]
+        arm_angle_adjusted = [i - j for i, j in zip(self.arm_angles, joint_offset_radian)]
+        # print(arm_angle_adjusted)
+        arm_publish_callback({"positions": arm_angle_adjusted})
 
 
     def get_joystick(self):

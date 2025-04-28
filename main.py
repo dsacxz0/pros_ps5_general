@@ -3,6 +3,7 @@ import pygame
 from ui import UI
 from ws_client import RosbridgeClient
 from joystick_handler import JoystickHandler
+from iksolver import IKSolver
 
 def load_rosbridge_port(filename="config.csv"):
     try:
@@ -53,6 +54,9 @@ def main():
     joystick_handler = JoystickHandler()
 
     joysticks = {}
+    ik = IKSolver("robot_ver7.urdf", [0, -80, 90, 0, 0, 0, 0, 0], 3)
+    # real_robot_joint_initial = [90, 10, 160, 90, 90, 90, 70]
+    joint_offset = [-90, -90, -70, 90, 90, 90, 70]
 
     # 初始狀態：輸入 IP 模式
     input_mode = True
@@ -110,11 +114,6 @@ def main():
                 #     joystick_handler.process_axis_motion(
                 #         event.axis, 
                 #         event.value, 
-                #         wheel_publish_callback=lambda cmd: publish_wheel(ws_client, cmd,
-                #             joystick_handler.front_wheel_topic,
-                #             joystick_handler.rear_wheel_topic,
-                #             joystick_handler.front_wheel_range,
-                #             joystick_handler.rear_wheel_range)
                 #     )
                 else:
                     pass
@@ -130,17 +129,31 @@ def main():
             if event.type == pygame.JOYDEVICEREMOVED:
                 del joysticks[event.instance_id]
                 print(f"Joystick {event.instance_id} disconnected")
+        if not input_mode:
+            #continuously pull joystick data instead of waiting for events (for 0s)
+            if pygame.joystick.get_count() > 0:
+                joystick_handler.process_joystick_continous(
+                    joysticks, 
+                    wheel_publish_callback=lambda cmd: publish_wheel(ws_client, cmd,
+                        joystick_handler.front_wheel_topic,
+                        joystick_handler.rear_wheel_topic,
+                        joystick_handler.front_wheel_range,
+                        joystick_handler.rear_wheel_range)
+                )
+            keys = pygame.key.get_pressed()
+            
+            joystick_handler.process_keypress_continuous(
+                keys,
+                wheel_publish_callback=lambda cmd: publish_wheel(ws_client, cmd,
+                    joystick_handler.front_wheel_topic,
+                    joystick_handler.rear_wheel_topic,
+                    joystick_handler.front_wheel_range,
+                    joystick_handler.rear_wheel_range),
+                arm_publish_callback=lambda arm_msg: ws_client.publish(joystick_handler.arm_topic, arm_msg),
+                ik = ik,
+                joint_offset_degree = joint_offset
+            )
         
-        #continuously pull joystick data instead of waiting for events (for 0s)
-        if pygame.joystick.get_count() > 0:
-            joystick_handler.process_joystick_continous(
-                            joysticks, 
-                            wheel_publish_callback=lambda cmd: publish_wheel(ws_client, cmd,
-                            joystick_handler.front_wheel_topic,
-                            joystick_handler.rear_wheel_topic,
-                            joystick_handler.front_wheel_range,
-                            joystick_handler.rear_wheel_range)
-                    )
 
         connection_status = "Connected" if ws_client.ws else "Disconnected"
         ui.draw(
