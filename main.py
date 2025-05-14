@@ -54,9 +54,13 @@ def main():
     joystick_handler = JoystickHandler()
 
     joysticks = {}
-    ik = IKSolver("robot_ver7.urdf", [0, -80, 90, 0, 0, 0, 0, 0], 3)
+    initial_pose = [0, -80, 90, 90, 0, 0, 0, 0, 0, 0]
+    ik = IKSolver("robotArm_ver7.urdf", initial_pose, 6)
     # real_robot_joint_initial = [90, 10, 160, 90, 90, 90, 70]
-    joint_offset = [-90, -90, -70, 90, 90, 90, 70]
+    # real_robot_straight = [90, 90, 90, 0, 90, 90, 70]
+    # joint_offset = [-90, -90, -70, 90, 90, 90, 70]
+    # joint_offset = [-90, -90, -70, 90, 90, 90, 70]
+    joint_offset = [-90, -90, -70, 0, -90, -90, -70]
 
     # 初始狀態：輸入 IP 模式
     input_mode = True
@@ -132,7 +136,7 @@ def main():
         if not input_mode:
             #continuously pull joystick data instead of waiting for events (for 0s)
             if pygame.joystick.get_count() > 0:
-                joystick_handler.process_joystick_continous(
+                joystick_handler.process_joystick_continuous(
                     joysticks, 
                     wheel_publish_callback=lambda cmd: publish_wheel(ws_client, cmd,
                         joystick_handler.front_wheel_topic,
@@ -151,9 +155,9 @@ def main():
                     joystick_handler.rear_wheel_range),
                 arm_publish_callback=lambda arm_msg: ws_client.publish(joystick_handler.arm_topic, arm_msg),
                 ik = ik,
-                joint_offset_degree = joint_offset
+                joint_offset_degree = joint_offset,
+                initial_pose = initial_pose
             )
-        
 
         connection_status = "Connected" if ws_client.ws else "Disconnected"
         ui.draw(

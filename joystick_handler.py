@@ -221,10 +221,10 @@ class JoystickHandler:
 
             #get left stick horizontal axis
             if abs(joystick.get_axis(self.left_stick_horizontal)) > self.min_joystick_value:
-                axis_horizontal = joystick.get_axis(self.left_stick_horizontal)
+                axis_horizontal += joystick.get_axis(self.left_stick_horizontal)
             #get left stick vertical axis
             if abs(joystick.get_axis(self.left_stick_vertical)) > self.min_joystick_value:
-                axis_vertical = -joystick.get_axis(self.left_stick_vertical)
+                axis_vertical -= joystick.get_axis(self.left_stick_vertical)
             #get clockwise rotation axis (trigger button starts at -1 and ends at 1)
             if abs((joystick.get_axis(self.clockwise_rotation) + 1) / 2) > self.min_joystick_value:
                 axis_rotational += (joystick.get_axis(self.clockwise_rotation) + 1) / 2
@@ -249,7 +249,7 @@ class JoystickHandler:
             # z += joystick.get_button(self.arm_up)
             # z -= joystick.get_button(self.arm_down)
 
-    def process_keypress_continuous(self, keys, wheel_publish_callback, arm_publish_callback, ik, joint_offset_degree):
+    def process_keypress_continuous(self, keys, wheel_publish_callback, arm_publish_callback, ik, joint_offset_degree, initial_pose):
         axis_vertical = 0
         axis_horizontal = 0
         axis_rotational = 0
@@ -279,7 +279,7 @@ class JoystickHandler:
         dy = 0.00
         dz = 0.00
 
-        movespeed = 0.05
+        movespeed = 0.1
 
         if keys[pygame.K_UP]:
             dy += movespeed
@@ -293,14 +293,18 @@ class JoystickHandler:
             dz += movespeed
         if keys[pygame.K_LCTRL]:
             dz -= movespeed
+
+        if (dx, dy, dz) != (0, 0, 0):
+            ik.solve(dx, dy, dz)
+
+        # reset position
+        if keys[pygame.K_r]:
+            ik.set_joint_targets(initial_pose)
+
         
-        self.arm_angles = ik.solve(dx,dy,dz)
+        self.arm_angles = ik.update()
         # print(self.arm_angles)
         joint_offset_radian = [math.radians(deg) for deg in joint_offset_degree]
         arm_angle_adjusted = [i - j for i, j in zip(self.arm_angles, joint_offset_radian)]
         # print(arm_angle_adjusted)
         arm_publish_callback({"positions": arm_angle_adjusted})
-
-
-    def get_joystick(self):
-        return self.joystick
